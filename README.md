@@ -1,6 +1,6 @@
 # pogo_bioobs19_imaging
 
-Authors: Eric Orenstein (Scripps Institution of Oceanography) and Simon-Martin Schroder (Univeristy of Kiel)
+Authors: Eric Orenstein (Scripps Institution of Oceanography) and Simon-Martin Schroder (University of Kiel)
 
 This will be landing page for course materials associated with the Partnership for Observing the Global Oceans workshop on Machine Learning and Artificial Intelligence for Biological Ocean Observations.
 
