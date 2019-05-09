@@ -1,0 +1,140 @@
+{
+    "Description": "Create JupyterNotebook from SageMaker",
+    "Metadata": {},
+    "Parameters": {
+        "NotebookInstanceType": {
+            "Type": "String",
+            "Default": "ml.t2.medium",
+            "AllowedValues": [
+                "ml.t2.medium",
+                "ml.t2.large",
+                "ml.t2.xlarge",
+                "ml.t2.2xlarge",
+                "ml.m4.xlarge",
+                "ml.m4.2xlarge",
+                "ml.p2.xlarge",
+                "ml.p3.2xlarge"
+            ],
+            "Description": "Select a SageMaker notebook instance type. Defaults to ml.t2.medium."
+        },
+        "Workshop": {
+            "Type": "String",
+            "Description": "Name of the Workshop",
+            "Default": "Imaging"
+        }
+    },
+    "Mappings": {},
+    "Conditions": {},
+    "Resources": {
+        "SageMakerNotebookInstance": {
+            "Type": "AWS::SageMaker::NotebookInstance",
+            "Properties": {
+                "DirectInternetAccess" : "Enabled",
+                "InstanceType": {
+                    "Ref": "NotebookInstanceType"
+                },
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "ExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "RootAccess": "Enabled",
+                "VolumeSizeInGB": "10",
+                "NotebookInstanceName": {
+                    "Fn::Sub": "${Workshop}-Workshop-Notebook"
+                },
+                "LifecycleConfigName": {
+                      "Fn::GetAtt": [
+                          "ResearchNotebookLifecycleConfig",
+                          "NotebookInstanceLifecycleConfigName"
+                      ]
+                }
+            },
+            "Metadata": {}
+        },
+        "ResearchNotebookLifecycleConfig": {
+            "Type": "AWS::SageMaker::NotebookInstanceLifecycleConfig",
+            "Properties": {
+                "OnStart": [
+                  {
+                      "Content": {
+                          "Fn::Base64": {
+                          "Fn::Join": [
+                                "",
+                                [
+                                    "#!/bin/bash\n",
+                                    "set -o errexit\n",
+                                    "sudo -i -u ec2-user bash << EOF\n",
+                                    "echo \"Setup the Workshop exercises\"\n",
+                                    "git clone https://github.com/eor314/pogo_bioobs19_imaging.git ~/SageMaker/imaging/\n"
+                                ]
+                            ]
+                          }
+                      }
+                  }
+                ]
+            }
+      },
+        "ExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "sagemaker.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "*",
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {}
+        }
+    },
+    "Outputs": {
+        "SageMakerNotebookInstance": {
+            "Value": {
+                "Ref": "SageMakerNotebookInstance"
+            }
+        },
+        "OpenInstanceLink": {
+            "Value": {
+                "Fn::Sub": [
+                    "https://${NotebookInstanceName}.notebook.${AWS::Region}.sagemaker.aws/tree",
+                    {
+                        "NotebookInstanceName": {
+                            "Fn::GetAtt": [
+                                "SageMakerNotebookInstance",
+                                "NotebookInstanceName"
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}
