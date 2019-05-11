@@ -16,12 +16,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 
-def make_confmat(labels, decs, acc, outpath=None):
+def make_confmat(labels, decs, acc, mat_size = 8, outpath=None):
     """
     takes classifier output and labels to generate a confusion matrix
     :param labels: list of true numeric labels
     :param dec: list of labels from classifiers
     :param acc: accuracy [float]
+    :param mat_size: size for plot in inches (assumed square dims) [int]
     :param outpath: file path for saving [str]
     """
     # compute the confusion matrix from sklearn
@@ -51,6 +52,7 @@ def make_confmat(labels, decs, acc, outpath=None):
     cb = fig.colorbar(res)
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
+    fig.set_size_inches(mat_size, mat_size)
 
     # turn off this block of comments to remove numeric ticks
     """
