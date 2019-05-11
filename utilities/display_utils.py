@@ -12,11 +12,11 @@ import os
 import numpy as np
 from sklearn.metrics import confusion_matrix
 import matplotlib
-#matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
-def make_confmat(labels, decs, acc, mat_size = 8, outpath=None):
+def make_confmat(labels, decs, acc, mat_size=8, outpath=None):
     """
     takes classifier output and labels to generate a confusion matrix
     :param labels: list of true numeric labels
@@ -26,14 +26,14 @@ def make_confmat(labels, decs, acc, mat_size = 8, outpath=None):
     :param outpath: file path for saving [str]
     """
     # compute the confusion matrix from sklearn
-    conf = confusion_matrix(labels,decs)
+    conf = confusion_matrix(labels, decs)
 
     # go through and normalize the output
     norm_conf = []
     for ii in conf:
         aa = 0
         tmp_arr = []
-        aa = sum(ii,0)
+        aa = sum(ii, 0)
         if aa == 0:
             for jj in ii:
                 tmp_arr.append(0)
@@ -47,7 +47,8 @@ def make_confmat(labels, decs, acc, mat_size = 8, outpath=None):
     plt.clf()
     ax = fig.add_subplot(111)
     ax.set_aspect(1)
-    res = ax.imshow(np.array(norm_conf), cmap = plt.cm.jet, interpolation='nearest')
+    res = ax.imshow(np.array(norm_conf), cmap=plt.cm.jet,
+                    interpolation='nearest')
     plt.title('Object accuracy: %.3f' % acc)
     cb = fig.colorbar(res)
     plt.ylabel('True label')
@@ -74,3 +75,10 @@ def make_confmat(labels, decs, acc, mat_size = 8, outpath=None):
     # otherwise, display it
     else:
         plt.show()
+
+
+def imshow_tensor(tensor, *args, **kwargs):
+    """
+    Display a PyTorch tensor using matplotlib.
+    """
+    plt.imshow(tensor.permute(1, 2, 0).numpy(), *args, **kwargs)
