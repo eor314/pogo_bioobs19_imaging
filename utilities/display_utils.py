@@ -156,6 +156,7 @@ def tile_images(images, tile_dim, resize=128):
         jj = idx // tile_dim[1]
 
         im_in = cv2.imread(img)
+        im_in = cv2.cvtColor(im_in, cv2.COLOR_BGR2RGB)
         im_out = aspect_resize(im_in, resize)
 
         out[jj*resize:jj*resize+resize, ii*resize:ii*resize+resize, :] = im_out
