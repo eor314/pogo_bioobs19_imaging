@@ -2,7 +2,7 @@
     "Description": "Create JupyterNotebook from SageMaker",
     "Metadata": {},
     "Parameters": {
-        "NotebookInstanceType": {
+        "pNotebookInstanceType": {
             "Type": "String",
             "Default": "ml.t2.medium",
             "AllowedValues": [
@@ -17,21 +17,47 @@
             ],
             "Description": "Select a SageMaker notebook instance type. Defaults to ml.t2.medium."
         },
-        "Workshop": {
+        "pWorkshop": {
             "Type": "String",
             "Description": "Name of the Workshop",
-            "Default": "Imaging"
+            "Default": "Acoustics",
+            "AllowedValues": [
+                "Acoustics",
+                "Genomics",
+                "Imaging"
+            ]
         }
     },
-    "Mappings": {},
+    "Mappings": {
+        "mNotebookLifecycleConfig": {
+            "Acoustics": {
+                "CondaCmd": "conda install --name pytorch_p36 --quiet --yes opencv",
+                "NotebookDownload": "",
+                "DataDownload": "",
+                "DataExtraction": ""
+            },
+            "Genomics": {
+                "CondaCmd": "conda install --name pytorch_p36 --quiet --yes opencv",
+                "NotebookDownload": "",
+                "DataDownload": "",
+                "DataExtraction": ""
+            },
+            "Imaging": {
+                "CondaCmd": "conda install --name pytorch_p36 --quiet --yes opencv",
+                "NotebookDownload": "git clone --quiet https://github.com/eor314/pogo_bioobs19_imaging.git ~/SageMaker/Notebooks/",
+                "DataDownload": "aws s3 cp s3://pogo-bioobs-2019-tar/pogo_bioobs_2019.tar ~/SageMaker/ --no-sign-request --only-show-errors",
+                "DataExtraction": "mkdir -p ~/SageMaker/Data && tar xf ~/SageMaker/pogo_bioobs_2019.tar -C ~/SageMaker/Data"
+            }
+        }
+    },
     "Conditions": {},
     "Resources": {
-        "SageMakerNotebookInstance": {
+        "rSageMakerNotebookInstance": {
             "Type": "AWS::SageMaker::NotebookInstance",
             "Properties": {
-                "DirectInternetAccess" : "Enabled",
+                "DirectInternetAccess": "Enabled",
                 "InstanceType": {
-                    "Ref": "NotebookInstanceType"
+                    "Ref": "pNotebookInstanceType"
                 },
                 "RoleArn": {
                     "Fn::GetAtt": [
@@ -42,40 +68,64 @@
                 "RootAccess": "Enabled",
                 "VolumeSizeInGB": "10",
                 "NotebookInstanceName": {
-                    "Fn::Sub": "${Workshop}-Workshop-Notebook"
+                    "Fn::Sub": "${pWorkshop}-Workshop-Notebook"
                 },
                 "LifecycleConfigName": {
-                      "Fn::GetAtt": [
-                          "ResearchNotebookLifecycleConfig",
-                          "NotebookInstanceLifecycleConfigName"
-                      ]
+                    "Fn::GetAtt": [
+                        "rNotebookLifecycleConfig",
+                        "NotebookInstanceLifecycleConfigName"
+                    ]
                 }
             },
             "Metadata": {}
         },
-        "ResearchNotebookLifecycleConfig": {
+        "rNotebookLifecycleConfig": {
             "Type": "AWS::SageMaker::NotebookInstanceLifecycleConfig",
             "Properties": {
-                "OnStart": [
-                  {
-                      "Content": {
-                          "Fn::Base64": {
-                          "Fn::Join": [
-                                "",
-                                [
-                                    "#!/bin/bash\n",
-                                    "set -o errexit\n",
-                                    "sudo -i -u ec2-user bash << EOF\n",
-                                    "echo \"Setup the Workshop exercises\"\n",
-                                    "git clone https://github.com/eor314/pogo_bioobs19_imaging.git ~/SageMaker/imaging/\n"
+                "OnCreate": [
+                    {
+                        "Content": {
+                            "Fn::Base64": {
+                                "Fn::Join": [
+                                    "\n",
+                                    [
+                                        "#!/bin/bash",
+                                        "set -o errexit",
+                                        "sudo -i -u ec2-user bash << EOF",
+                                        "echo \"Downloading Notebooks\"",
+                                        { "Fn::FindInMap" : [ "mNotebookLifecycleConfig", {"Ref":"pWorkshop"}, "NotebookDownload"] },
+                                        "echo \"Done downloading Notebooks\"",
+                                        "echo \"Downloading data\"",
+                                        { "Fn::FindInMap" : [ "mNotebookLifecycleConfig", {"Ref":"pWorkshop"}, "DataDownload"] },
+                                        { "Fn::FindInMap" : [ "mNotebookLifecycleConfig", {"Ref":"pWorkshop"}, "DataExtraction"] },
+                                        "echo \"Done downloading data\""
+                                    ]
                                 ]
-                            ]
-                          }
-                      }
-                  }
+                            }
+                        }
+                    }
+                ],
+                "OnStart": [
+                    {
+                        "Content": {
+                            "Fn::Base64": {
+                                "Fn::Join": [
+                                    "\n",
+                                    [
+                                        "#!/bin/bash",
+                                        "set -o errexit",
+                                        "sudo -i -u ec2-user bash << EOF",
+                                        "echo \"Installing Conda packages\"",
+                                        { "Fn::FindInMap" : [ "mNotebookLifecycleConfig", {"Ref":"pWorkshop"}, "CondaCmd"] },
+                                        "echo \"Done installing Conda packages\""
+                                    ]
+                                ]
+                            }
+                        }
+                    }
                 ]
             }
-      },
+        },
         "ExecutionRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -118,7 +168,7 @@
     "Outputs": {
         "SageMakerNotebookInstance": {
             "Value": {
-                "Ref": "SageMakerNotebookInstance"
+                "Ref": "rSageMakerNotebookInstance"
             }
         },
         "OpenInstanceLink": {
@@ -128,7 +178,7 @@
                     {
                         "NotebookInstanceName": {
                             "Fn::GetAtt": [
-                                "SageMakerNotebookInstance",
+                                "rSageMakerNotebookInstance",
                                 "NotebookInstanceName"
                             ]
                         }
