@@ -18,7 +18,7 @@ import glob
 import cv2
 
 
-def make_confmat(labels, decs, acc, mat_size=8, outpath=None):
+def make_confmat(y_true, y_pred, acc, mat_size=None, labels=None, outpath=None):
     """
     takes classifier output and labels to generate a confusion matrix
     :param labels: list of true numeric labels
@@ -28,34 +28,26 @@ def make_confmat(labels, decs, acc, mat_size=8, outpath=None):
     :param outpath: file path for saving [str]
     """
     # compute the confusion matrix from sklearn
-    conf = confusion_matrix(labels, decs)
+    conf = confusion_matrix(y_true, y_pred)
 
-    # go through and normalize the output
-    norm_conf = []
-    for ii in conf:
-        aa = 0
-        tmp_arr = []
-        aa = sum(ii, 0)
-        if aa == 0:
-            for jj in ii:
-                tmp_arr.append(0)
-        else:
-            for jj in ii:
-                tmp_arr.append(float(jj)/float(aa))
-        norm_conf.append(tmp_arr)
+    # Normalize by support
+    conf = conf / conf.sum(axis=1)[:, np.newaxis]
 
     # create the figure output
-    fig = plt.figure()
-    plt.clf()
-    ax = fig.add_subplot(111)
+    fig, ax = plt.subplots()
     ax.set_aspect(1)
-    res = ax.imshow(np.array(norm_conf), cmap=plt.cm.jet,
-                    interpolation='nearest')
+    aximg = ax.imshow(conf, cmap="Blues", interpolation='nearest')
     plt.title('Object accuracy: %.3f' % acc)
-    cb = fig.colorbar(res)
+    fig.colorbar(aximg)
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    fig.set_size_inches(mat_size, mat_size)
+
+    if labels is not None:
+        plt.xticks(np.arange(len(labels)), labels, rotation=90)
+        plt.yticks(np.arange(len(labels)), labels)
+
+    if mat_size is not None:
+        fig.set_size_inches(mat_size, mat_size)
 
     # turn off this block of comments to remove numeric ticks
     """
@@ -71,7 +63,7 @@ def make_confmat(labels, decs, acc, mat_size=8, outpath=None):
     """
 
     # if a file for saving is defined, save it
-    if outpath:
+    if outpath is not None:
         plt.savefig(outpath, dpi=120)
 
     # otherwise, display it
@@ -85,8 +77,8 @@ def imshow_tensor(tensor, *args, **kwargs):
     """
     plt.imshow(tensor.permute(1, 2, 0).numpy(), *args, **kwargs)
 
-def aspect_resize(im, ii=226):
 
+def aspect_resize(im, ii=226):
     """
     image == input array
     ii == desired dimensions
@@ -98,18 +90,18 @@ def aspect_resize(im, ii=226):
     if dim[0] != dim[1]:
         # get the largest dimension
         large_dim = max(dim)
-        
+
         # ratio between the large dimension and required dimension
         rat = float(ii)/large_dim
-        
+
         # get the smaller dimension that maintains the aspect ratio
         small_dim = int(min(dim)*rat)
-        
+
         # get the indicies of the large and small dimensions
         large_ind = dim.index(max(dim))
         small_ind = dim.index(min(dim))
         dim = list(dim)
-        
+
         # the dimension assigment may seem weird cause of how python indexes images
         dim[small_ind] = ii
         dim[large_ind] = small_dim
@@ -117,22 +109,28 @@ def aspect_resize(im, ii=226):
 
         im = cv2.resize(im, dim)
         half = np.floor(np.array(im.shape[0:2])/2.0).astype('int')
-        
+
         # make an empty array, and place the new image in the middle
         res = np.zeros((ii, ii, 3), dtype='uint8')
-        
+
         if large_ind == 1:
-            test = res[cen[0]-half[0]:cen[0]+half[0], cen[1]-half[1]:cen[1]+half[1]+1]
+            test = res[cen[0]-half[0]:cen[0]+half[0],
+                       cen[1]-half[1]:cen[1]+half[1]+1]
             if test.shape != im.shape:
-                res[cen[0]-half[0]:cen[0]+half[0]+1, cen[1]-half[1]:cen[1]+half[1]+1] = im
+                res[cen[0]-half[0]:cen[0]+half[0]+1,
+                    cen[1]-half[1]:cen[1]+half[1]+1] = im
             else:
-                res[cen[0]-half[0]:cen[0]+half[0], cen[1]-half[1]:cen[1]+half[1]+1] = im
+                res[cen[0]-half[0]:cen[0]+half[0],
+                    cen[1]-half[1]:cen[1]+half[1]+1] = im
         else:
-            test = res[cen[0]-half[0]:cen[0]+half[0]+1, cen[1]-half[1]:cen[1]+half[1]]
+            test = res[cen[0]-half[0]:cen[0]+half[0] +
+                       1, cen[1]-half[1]:cen[1]+half[1]]
             if test.shape != im.shape:
-                res[cen[0]-half[0]:cen[0]+half[0]+1, cen[1]-half[1]:cen[1]+half[1]+1] = im
+                res[cen[0]-half[0]:cen[0]+half[0]+1,
+                    cen[1]-half[1]:cen[1]+half[1]+1] = im
             else:
-                res[cen[0]-half[0]:cen[0]+half[0]+1, cen[1]-half[1]:cen[1]+half[1]] = im
+                res[cen[0]-half[0]:cen[0]+half[0]+1,
+                    cen[1]-half[1]:cen[1]+half[1]] = im
     else:
         res = cv2.resize(im, (ii, ii))
 
