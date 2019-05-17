@@ -10,10 +10,12 @@ def stratified_random_split(dataset, **kwargs):
         **kwargs: see train_test_split
             test_size, train_size, random_state, shuffle
     """
-    indices, y = np.arange(len(dataset)), dataset.targets
+    indices = np.arange(len(dataset))
+
+    stratify = kwargs.pop("stratify", dataset.targets)
 
     indices_train, indices_test = train_test_split(
-        indices, stratify=y, **kwargs)
+        indices, stratify=stratify, **kwargs)
 
     return (Subset(dataset, indices_train),
             Subset(dataset, indices_test))
