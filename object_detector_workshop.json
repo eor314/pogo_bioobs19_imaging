@@ -1,0 +1,172 @@
+{
+    "Description": "Create JupyterNotebook from SageMaker",
+    "Metadata": {},
+    "Parameters": {
+        "pNotebookInstanceType": {
+            "Type": "String",
+            "Default": "ml.t2.medium",
+            "AllowedValues": [
+                "ml.t2.medium",
+                "ml.t2.large",
+                "ml.t2.xlarge",
+                "ml.t2.2xlarge",
+                "ml.m4.xlarge",
+                "ml.m4.2xlarge",
+                "ml.p2.xlarge",
+                "ml.p3.2xlarge"
+            ],
+            "Description": "Select a SageMaker notebook instance type. Defaults to ml.t2.medium."
+        },
+        "pWorkshop": {
+            "Type": "String",
+            "Description": "Name of the Workshop",
+            "Default": "Imaging",
+            "AllowedValues": [
+                "Imaging"
+            ]
+        }
+    },
+    "Mappings": {
+        "mNotebookLifecycleConfig": {
+            "Imaging": {
+                "CondaCmd": "conda install --name pytorch_p36 --quiet --yes tensorflow",
+                "CondaCmd": "conda install --name pytorch_p36 --quiet --yes tensorboard",
+                "CondaCmd": "conda install --name pytorch_p36 --quiet --yes -c conda-forge terminaltables",
+                "NotebookDownload": "git clone --quiet https://github.com/eriklindernoren/PyTorch-YOLOv3 ~/SageMaker/Notebooks/",
+            }
+        }
+    },
+    "Conditions": {},
+    "Resources": {
+        "rSageMakerNotebookInstance": {
+            "Type": "AWS::SageMaker::NotebookInstance",
+            "Properties": {
+                "DirectInternetAccess": "Enabled",
+                "InstanceType": {
+                    "Ref": "pNotebookInstanceType"
+                },
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "ExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "RootAccess": "Enabled",
+                "VolumeSizeInGB": "10",
+                "NotebookInstanceName": {
+                    "Fn::Sub": "${pWorkshop}-detect-object"
+                },
+                "LifecycleConfigName": {
+                    "Fn::GetAtt": [
+                        "rNotebookLifecycleConfig",
+                        "NotebookInstanceLifecycleConfigName"
+                    ]
+                }
+            },
+            "Metadata": {}
+        },
+        "rNotebookLifecycleConfig": {
+            "Type": "AWS::SageMaker::NotebookInstanceLifecycleConfig",
+            "Properties": {
+                "OnCreate": [
+                    {
+                        "Content": {
+                            "Fn::Base64": {
+                                "Fn::Join": [
+                                    "\n",
+                                    [
+                                        "#!/bin/bash",
+                                        "set -o errexit",
+                                        "sudo -i -u ec2-user bash << EOF",
+                                        "echo \"Downloading Notebooks\"",
+                                        { "Fn::FindInMap" : [ "mNotebookLifecycleConfig", {"Ref":"pWorkshop"}, "NotebookDownload"] },
+                                        "echo \"Done downloading Notebooks\"",
+                                    ]
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "OnStart": [
+                    {
+                        "Content": {
+                            "Fn::Base64": {
+                                "Fn::Join": [
+                                    "\n",
+                                    [
+                                        "#!/bin/bash",
+                                        "set -o errexit",
+                                        "sudo -i -u ec2-user bash << EOF",
+                                        "echo \"Installing Conda packages\"",
+                                        { "Fn::FindInMap" : [ "mNotebookLifecycleConfig", {"Ref":"pWorkshop"}, "CondaCmd"] },
+                                        "echo \"Done installing Conda packages\""
+                                    ]
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "ExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "sagemaker.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "*",
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {}
+        }
+    },
+    "Outputs": {
+        "SageMakerNotebookInstance": {
+            "Value": {
+                "Ref": "rSageMakerNotebookInstance"
+            }
+        },
+        "OpenInstanceLink": {
+            "Value": {
+                "Fn::Sub": [
+                    "https://${NotebookInstanceName}.notebook.${AWS::Region}.sagemaker.aws/tree",
+                    {
+                        "NotebookInstanceName": {
+                            "Fn::GetAtt": [
+                                "rSageMakerNotebookInstance",
+                                "NotebookInstanceName"
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}
