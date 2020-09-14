@@ -14,9 +14,9 @@ Running the notebooks requries a Python 3.6 environment and several particular P
   <li>Install git: https://git-scm.com/book/en/v2/Getting-Started-Installing-Git (If installing on Windows check out GitHub Desktop: https://desktop.github.com/)</li>
   <li>Navigate to the local directory where you want the code to live in a terminal</li>
   
-        ```
+        <pre><code>
         cd PATH/TO/DIRECTORY
-        ```
+        </code></code>
   
   <li>Clone into the tutorial’s git repository using the command line:</li>
   
